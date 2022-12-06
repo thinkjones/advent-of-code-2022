@@ -24,8 +24,24 @@ def find_most_calories(input):
     return max_val
 
 
+def find_top_three_calories(input):
+    totals = []
+    max_val = 0
+    current_sum = 0
+    for val in input:
+        current_sum += int(val) if val != '' else 0
+        if val == '':
+            totals.append(current_sum)
+            current_sum = 0
+    if current_sum > 0:
+        totals.append(current_sum)
+    totals.sort(reverse=True)
+    top_three = totals[0:3]
+    return sum(top_three)
+
+
 if __name__ == "__main__":
     print('Day 1')
     data = fetch_input()
-    total = find_most_calories(data)
+    total = find_top_three_calories(data)
     print(total)
