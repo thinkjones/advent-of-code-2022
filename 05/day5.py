@@ -84,7 +84,7 @@ class ParseOperationsInput(object):
         return total, from_val, to_val
 
 
-if __name__ == "__main__":
+def part_one():
     # Part 1
     print('Day 5 - Part 1')
     rs, ro = fetch_input()
@@ -113,3 +113,45 @@ if __name__ == "__main__":
     # Print Final Stacks
     print(''.join([s.queue[0] for s in lqs]))
 
+
+def part_two():
+    # Part 2
+    print('Day 5 - Part 2')
+    rs, ro = fetch_input()
+
+    # Parse stacks
+    stack_parser = ParseStacksInput(rs)
+    lqs = stack_parser.to_lifo_queues()
+    print(len(lqs))
+    stacks = {}
+    for val in lqs:
+        print(f'{val.stack_key} - {val.queue}')
+        stacks[val.stack_key] = val
+    print(stacks.keys())
+
+    # Parse operations
+    operation_parser = ParseOperationsInput(ro)
+
+    # Execute
+    for op in operation_parser.operations:
+        temp_queue = LifoQueue('temp', [])
+        source = stacks[op[1]]
+        dest = stacks[op[2]]
+
+        # Move to temp
+        for moves in range(0, op[0]):
+            take = source.remove()
+            temp_queue.add(take)
+
+        # Move to dest
+        for moves in range(0, op[0]):
+            take = temp_queue.remove()
+            dest.add(take)
+
+    # Print Final Stacks
+    print(''.join([s.queue[0] for s in lqs]))
+
+
+if __name__ == "__main__":
+    part_one()
+    part_two()
