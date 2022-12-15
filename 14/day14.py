@@ -9,6 +9,8 @@ import math
 # Distress Signal
 # Packets decoded out of order, re-order packets (input)
 
+def to_key(x, y):
+    return f'{x}:{y}'
 
 class Point(object):
 
@@ -63,15 +65,53 @@ class Line(object):
 
 
 class RockMap(object):
-    def __init__(self):
+    def __init__(self, has_floor=False):
         self.rocks: list[Line] = []
         self.max_y = None
         self.min_x = None
         self.max_x = None
         self.bounding_box = None
+        self.floor_y = None
+        self.has_floor = has_floor
+        self.rock_map = defaultdict(str)
 
     def add_line(self, line: Line):
         self.rocks.append(line)
+
+    def add_sand(self, start: Point):
+        self.rocks.append(Line(Point(start.x, start.y), Point(start.x, start.y), is_sand=True))
+        self.rock_map[to_key(start.x, start.y)] = 'S'
+
+    def setup(self):
+        for l in self.rocks:
+            if l.orientation == Orientation.HORIZONTAL:
+                for x in range(l.start.x, l.end.x + 1):
+                    self.rock_map[to_key(x, l.start.y)] = 'R'
+            elif l.orientation == Orientation.VERTICAL:
+                for y in range(l.start.y, l.end.y + 1):
+                    self.rock_map[to_key(l.start.x, y)] = 'R'
+
+            xs = [l.start.x, l.end.x]
+            ys = [l.start.y, l.end.y]
+            min_x = min(xs)
+            max_x = max(xs)
+            max_y = max(ys)
+            if self.min_x is None or min_x < self.min_x:
+                self.min_x = min_x
+            if self.max_x is None or max_x > self.max_x:
+                self.max_x = max_x
+            if self.max_y is None or max_y > self.max_y:
+                self.max_y = max_y
+            self.floor_y = self.max_y + 2
+
+        # Bounding box
+        self.bounding_box = Point(self.min_x, 0), Point(self.max_x, self.max_y)
+        return self.bounding_box
+
+    def intersects(self, point):
+        if self.has_floor and point.y >= self.floor_y:
+            return True
+        return to_key(point.x, point.y) in self.rock_map
 
     def next_point(self, point):
         pos = point.down()
@@ -95,9 +135,6 @@ class RockMap(object):
                 return True
         return False
 
-    def add_sand(self, start: Point):
-        self.rocks.append(Line(Point(start.x, start.y), Point(start.x, start.y), is_sand=True))
-
     def add_sand_journey(self, start: Point):
         current_point = Point(start.x, start.y)
         finished = False
@@ -110,27 +147,12 @@ class RockMap(object):
             else:
                 current_point = next_point
 
-            if not self.any_rock_below_me(current_point):
+            if not self.has_floor and not self.any_rock_below_me(current_point):
                 return None
+        if current_point and current_point.x == start.x and current_point.y == start.y:
+            return None
         return current_point
 
-    def calculate_dimensions(self):
-        for l in self.rocks:
-            xs = [l.start.x, l.end.x]
-            ys = [l.start.y, l.end.y]
-            min_x = min(xs)
-            max_x = max(xs)
-            max_y = max(ys)
-            if self.min_x is None or min_x < self.min_x:
-                self.min_x = min_x
-            if self.max_x is None or max_x > self.max_x:
-                self.max_x = max_x
-            if self.max_y is None or max_y > self.max_y:
-                self.max_y = max_y
-
-        # Bounding box
-        self.bounding_box = Point(self.min_x, 0), Point(self.max_x, self.max_y)
-        return self.bounding_box
 
     def intersects_point(self, line, point):
         if line.orientation == Orientation.HORIZONTAL:
@@ -140,18 +162,13 @@ class RockMap(object):
         else:
             raise ValueError('Shouldn\'t reach here')
 
-    def intersects(self, point):
-        result = False
-        for r in self.rocks:
-            result = self.intersects_point(r, point)
-            if result:
-                return True
-        return result
+
 
     def details(self):
         for r in self.rocks:
             print(str(r))
         print(f'Bounding Box: {str(self.bounding_box[0])} -> {str(self.bounding_box[1])}')
+        print(f'Floor y: {str(self.floor_y)}')
         total_sand = len([s for s in self.rocks if s.is_sand is True])
         print(f'Total Sand: {total_sand}')
 
@@ -169,7 +186,7 @@ def fetch_input():
                 items = full_line.split(' -> ')
                 for i in range(0, len(items) - 1):
                     results.add_line(Line(Point.from_raw(items[i]), Point.from_raw(items[i + 1])))
-        results.calculate_dimensions()
+        results.setup()
     return results
 
 
@@ -185,7 +202,26 @@ def part_one():
         finished = journey is None
     rock_map.details()
 
+def part_two():
+    rock_map = fetch_input()
+    print(len(rock_map.rocks))
+    rock_map.details()
+    rock_map.has_floor = True
+
+    # Lower level
+    lower_level_y = rock_map.bounding_box[1].y + 2
+    print(lower_level_y)
+
+    finished = False
+    idx = 0
+    while not finished:
+        journey = rock_map.add_sand_journey(Point(500,0))
+        print(journey)
+        finished = journey is None
+        idx += 1
+    rock_map.details()
+
 
 if __name__ == "__main__":
-    part_one()
+    part_two()
 
